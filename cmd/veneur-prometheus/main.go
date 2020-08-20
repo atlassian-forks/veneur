@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"strings"
 	"time"
 
 	"github.com/DataDog/datadog-go/statsd"
@@ -16,6 +17,7 @@ var (
 	ignoredMetricsStr = flag.String("ignored-metrics", "", "A comma-seperated list of metric name regexes to not export")
 	prefix            = flag.String("p", "", "A prefix to append to any metrics emitted. Include a trailing period. (e.g. \"myservice.\")")
 	statsHost         = flag.String("s", "127.0.0.1:8126", "The host and port — like '127.0.0.1:8126' — to send our metrics to.")
+	additionalTags    = flag.String("t", "", "A comma-separated list of additional tags to send to statsd in addition to Prometheus labels for all metrics.")
 
 	// mTLS params for collecting metrics
 	cert   = flag.String("cert", "", "The path to a client cert to present to the server. Only used if using mTLS.")
@@ -44,6 +46,8 @@ func main() {
 	if *prefix != "" {
 		statsClient.Namespace = *prefix
 	}
+
+	statsClient.Tags = strings.Split(*additionalTags, ",")
 
 	cfg, err := prometheusConfigFromArguments()
 	if err != nil {

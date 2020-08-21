@@ -41,7 +41,19 @@ func main() {
 		}).Fatal("failed to parse interval")
 	}
 
-	statsClient, _ := statsd.New(*statsHost, statsd.WithoutTelemetry())
+	var statsClient *statsd.Client
+
+	for {
+		statsClient, err = statsd.New(*statsHost, statsd.WithoutTelemetry())
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"error":    err,
+			}).Error("failed to construct new statsd client, retrying after ", i)
+			time.Sleep(i)
+		} else {
+			break
+		}
+	}
 
 	if *prefix != "" {
 		statsClient.Namespace = *prefix

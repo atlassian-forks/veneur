@@ -18,6 +18,7 @@ var (
 	prefix            = flag.String("p", "", "A prefix to append to any metrics emitted. Include a trailing period. (e.g. \"myservice.\")")
 	statsHost         = flag.String("s", "127.0.0.1:8126", "The host and port — like '127.0.0.1:8126' — to send our metrics to.")
 	additionalTags    = flag.String("t", "", "A comma-separated list of additional tags to send to statsd in addition to Prometheus labels for all metrics.")
+	retryStatsd       = flag.Bool("r", false, "Enable retries when constructing the statsd client every query interval.")
 
 	// mTLS params for collecting metrics
 	cert   = flag.String("cert", "", "The path to a client cert to present to the server. Only used if using mTLS.")
@@ -44,14 +45,20 @@ func main() {
 	var statsClient *statsd.Client
 
 	for {
+		/* Retry constructing the statsdClient if needed, for example in cases where the statsd sink starts up after current process */
 		statsClient, err = statsd.New(*statsHost, statsd.WithoutTelemetry())
-		if err != nil {
+		if err == nil {
+			break
+		} else if *retryStatsd {
 			logrus.WithFields(logrus.Fields{
-				"error":    err,
+				"error": err,
 			}).Error("failed to construct new statsd client, retrying after ", i)
 			time.Sleep(i)
 		} else {
-			break
+			logrus.WithFields(logrus.Fields{
+				"error": err,
+			}).Fatal("failed to construct new statsd client")
+			panic("failed to construct new statsd client")
 		}
 	}
 
